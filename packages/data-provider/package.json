@@ -1,8 +1,8 @@
 {
-  "name": "ra-data-nestjsx-crud",
+  "name": "@neoxia-js/ra-data-nestjsx-crud",
   "version": "1.1.4",
   "description": "Data provider which integrates React Admin with NestJS CRUD library",
-  "author": "Ramil Yanbulatov <rayman1104@gmail.com>",
+  "author": "Ciro Alabrese <ciro.alabrese@neoxia.com>",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/rayman1104/ra-data-nestjsx-crud.git"
+    "url": "git+https://github.com/ggirodda/ra-data-nestjsx-crud.git"
   },
   "scripts": {
     "prepare": "install-peers",
@@ -23,7 +23,7 @@
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "bugs": {
-    "url": "https://github.com/rayman1104/ra-data-nestjsx-crud/issues"
+    "url": "https://github.com/ggirodda/ra-data-nestjsx-crud/issues"
   },
   "devDependencies": {
     "@types/lodash.omitby": "^4.6.6",
@@ -37,5 +37,9 @@
   },
   "peerDependencies": {
     "react-admin": "^3.0.0"
+  },
+  "homepage": "https://github.com/ggirodda/ra-data-nestjsx-crud#readme",
+  "directories": {
+    "lib": "lib"
   }
 }
