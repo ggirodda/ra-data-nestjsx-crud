@@ -8,6 +8,7 @@ import omitBy from "lodash.omitby";
 import { DataProvider } from "ra-core";
 import { fetchUtils } from "react-admin";
 import { stringify } from "querystring";
+import { promises } from "dns";
 
 /**
  * Maps react-admin queries to a nestjsx/crud powered REST API
@@ -70,13 +71,18 @@ const mergeEncodedQueries = (...encodedQueries) =>
   encodedQueries.map((query) => query).join("&");
 
 const transformFileIntoBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+  const files = Array.isArray(file) ? file : [file];
+  return Promise.all(
+    files.map((file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
 
-    reader.readAsDataURL(file.rawFile);
-  });
+        reader.readAsDataURL(file.rawFile);
+      });
+    })
+  );
 };
 
 const getParamsWithBase64Files = async (data) => {
