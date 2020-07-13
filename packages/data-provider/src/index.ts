@@ -69,23 +69,26 @@ const composeQueryParams = (queryParams: any = {}): string => {
 const mergeEncodedQueries = (...encodedQueries) =>
   encodedQueries.map((query) => query).join("&");
 
-const transformFileIntoBase64 = (file) => {
-  const files = Array.isArray(file) ? file : [file];
-  return Promise.all(
-    files.map((file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
+const readFileAsDataUrl = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
 
-        reader.readAsDataURL(file.rawFile);
-      });
-    })
-  );
+    reader.readAsDataURL(file.rawFile);
+  });
+}
+
+const transformFileIntoBase64 = (files) => {
+  if (Array.isArray(files)) {
+    return Promise.all(
+      files.map(readFileAsDataUrl));
+  }
+  return readFileAsDataUrl(files);
 };
 
-const getParamsWithBase64Files = async (data) => {
-  const { base64, ...dataPayload } = data;
+const getParamsWithBase64Files = async (data, base64Key) => {
+  const { [base64Key]: base64, ...dataPayload } = data;
   if (!base64) {
     return data;
   }
@@ -101,7 +104,8 @@ const getParamsWithBase64Files = async (data) => {
 
 export default (
   apiUrl: string,
-  httpClient = fetchUtils.fetchJson
+  httpClient = fetchUtils.fetchJson,
+  { base64Key = "base64" } = {}
 ): DataProvider => ({
   getList: (resource, params) => {
     const { page, perPage } = params.pagination;
@@ -180,7 +184,8 @@ export default (
   },
 
   update: async (resource, params) => {
-    params.data = await getParamsWithBase64Files(params.data);
+    params.data = await getParamsWithBase64Files(params.data, base64Key);
+    console.log(params.data);
     // no need to send all fields, only updated fields are enough
     const data = countDiff(params.data, params.previousData);
     return httpClient(`${apiUrl}/${resource}/${params.id}`, {
@@ -190,7 +195,7 @@ export default (
   },
 
   updateMany: async (resource, params) => {
-    params.data = await getParamsWithBase64Files(params.data);
+    params.data = await getParamsWithBase64Files(params.data, base64Key);
     return Promise.all(
       params.ids.map((id) =>
         httpClient(`${apiUrl}/${resource}/${id}`, {
@@ -204,7 +209,7 @@ export default (
   },
 
   create: async (resource, params) => {
-    params.data = await getParamsWithBase64Files(params.data);
+    params.data = await getParamsWithBase64Files(params.data, base64Key);
     return httpClient(`${apiUrl}/${resource}`, {
       method: "POST",
       body: JSON.stringify(params.data),
