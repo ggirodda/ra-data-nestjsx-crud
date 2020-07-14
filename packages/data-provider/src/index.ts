@@ -70,6 +70,9 @@ const mergeEncodedQueries = (...encodedQueries) =>
   encodedQueries.map((query) => query).join("&");
 
 const readFileAsDataUrl = (file) => {
+  if (!file?.rawFile || !(file.rawFile instanceof File)) {
+    return file
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -89,7 +92,7 @@ const transformFileIntoBase64 = (files) => {
 
 const getParamsWithBase64Files = async (data, base64Key) => {
   const { [base64Key]: base64, ...dataPayload } = data;
-  if (!base64) {
+  if (base64 === undefined) {
     return data;
   }
   const files = await Object.keys(base64).reduce(async (data, key) => {
@@ -102,10 +105,38 @@ const getParamsWithBase64Files = async (data, base64Key) => {
   };
 };
 
+const readFile = (file) => {
+  return file?.rawFile || file
+}
+
+const transformFileIntoFormDataFile = (files) => {
+  if (Array.isArray(files)) {
+    return Promise.all(
+      files.map(readFile));
+  }
+  return readFile(files);
+};
+
+const getParamsWithFileUploadFiles = async (data, fileUploadKey) => {
+  const { [fileUploadKey]: fileUpload, ...dataPayload } = data;
+  if (fileUpload === undefined) {
+    return data;
+  }
+  await Promise.all(Object.keys(fileUpload).map(async (key) => {
+    dataPayload[key] = await transformFileIntoFormDataFile(fileUpload[key]);
+  }));
+  const formData = new FormData();
+  Object.keys(dataPayload).forEach((key) => {
+    key = Array.isArray(dataPayload[key]) ? `${key}[]` : key
+    formData.append(key, dataPayload[key])
+  })
+  return formData;
+};
+
 export default (
   apiUrl: string,
   httpClient = fetchUtils.fetchJson,
-  { base64Key = "base64" } = {}
+  { base64Key = "_base64Upload", fileUploadKey = "_fileUpload" } = {}
 ): DataProvider => ({
   getList: (resource, params) => {
     const { page, perPage } = params.pagination;
@@ -184,23 +215,24 @@ export default (
   },
 
   update: async (resource, params) => {
-    params.data = await getParamsWithBase64Files(params.data, base64Key);
-    console.log(params.data);
     // no need to send all fields, only updated fields are enough
-    const data = countDiff(params.data, params.previousData);
+    let data = countDiff(params.data, params.previousData);
+    data = await getParamsWithBase64Files(data, base64Key);
+    data = await getParamsWithFileUploadFiles(data, fileUploadKey);
     return httpClient(`${apiUrl}/${resource}/${params.id}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     }).then(({ json }) => ({ data: json }));
   },
 
   updateMany: async (resource, params) => {
     params.data = await getParamsWithBase64Files(params.data, base64Key);
+    params.data = await getParamsWithFileUploadFiles(params.data, fileUploadKey);
     return Promise.all(
       params.ids.map((id) =>
         httpClient(`${apiUrl}/${resource}/${id}`, {
           method: "PUT",
-          body: JSON.stringify(params.data),
+          body: params.data instanceof FormData ? params.data : JSON.stringify(params.data),
         })
       )
     ).then((responses) => ({
@@ -210,12 +242,11 @@ export default (
 
   create: async (resource, params) => {
     params.data = await getParamsWithBase64Files(params.data, base64Key);
+    params.data = await getParamsWithFileUploadFiles(params.data, fileUploadKey);
     return httpClient(`${apiUrl}/${resource}`, {
       method: "POST",
-      body: JSON.stringify(params.data),
-    }).then(({ json }) => ({
-      data: { ...params.data, id: json.id },
-    }));
+      body: params.data instanceof FormData ? params.data : JSON.stringify(params.data),
+    }).then(({ json }) => ({ data: json }));
   },
 
   delete: (resource, params) => {
