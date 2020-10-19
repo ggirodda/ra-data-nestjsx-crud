@@ -117,20 +117,6 @@ const transformFileIntoFormDataFile = (files) => {
   return readFile(files);
 };
 
-const getParamsWithFileUploadFiles = async (data, fileUploadKey) => {
-  const { [fileUploadKey]: fileUpload, ...dataPayload } = data;
-  if (fileUpload === undefined) {
-    return data;
-  }
-  await Promise.all(
-    Object.keys(fileUpload).map(async (key) => {
-      dataPayload[key] = await transformFileIntoFormDataFile(fileUpload[key]);
-    })
-  );
-  const formData = createFormData(dataPayload);
-  return formData;
-};
-
 function createFormData(object: Object, form?: FormData, namespace?: string): FormData {
   const formData = form || new FormData();
   for (let property in object) {
@@ -151,6 +137,20 @@ function createFormData(object: Object, form?: FormData, namespace?: string): Fo
   }
   return formData;
 }
+
+const getParamsWithFileUploadFiles = async (data, fileUploadKey) => {
+  const { [fileUploadKey]: fileUpload, ...dataPayload } = data;
+  if (fileUpload === undefined) {
+    return data;
+  }
+  await Promise.all(
+    Object.keys(fileUpload).map(async (key) => {
+      dataPayload[key] = await transformFileIntoFormDataFile(fileUpload[key]);
+    })
+  );
+  const formData = createFormData(dataPayload);
+  return formData;
+};
 
 export default (
   apiUrl: string,
