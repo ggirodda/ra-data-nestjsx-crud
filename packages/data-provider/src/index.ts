@@ -117,19 +117,38 @@ const transformFileIntoFormDataFile = (files) => {
   return readFile(files);
 };
 
+function createFormData(object: Object, form?: FormData, namespace?: string): FormData {
+  const formData = form || new FormData();
+  for (let property in object) {
+    if (
+      !object.hasOwnProperty(property) ||
+      (object[property] == null && object[property] === undefined)
+    ) {
+      continue;
+    }
+    const formKey = namespace ? `${namespace}[${property}]` : property;
+    if (object[property] instanceof Date) {
+      formData.append(formKey, object[property].toISOString());
+    } else if (typeof object[property] === 'object' && !(object[property] instanceof File)) {
+      createFormData(object[property], formData, formKey);
+    } else {
+      formData.append(formKey, object[property]);
+    }
+  }
+  return formData;
+}
+
 const getParamsWithFileUploadFiles = async (data, fileUploadKey) => {
   const { [fileUploadKey]: fileUpload, ...dataPayload } = data;
   if (fileUpload === undefined) {
     return data;
   }
-  await Promise.all(Object.keys(fileUpload).map(async (key) => {
-    dataPayload[key] = await transformFileIntoFormDataFile(fileUpload[key]);
-  }));
-  const formData = new FormData();
-  Object.keys(dataPayload).forEach((key) => {
-    key = Array.isArray(dataPayload[key]) ? `${key}[]` : key
-    formData.append(key, dataPayload[key])
-  })
+  await Promise.all(
+    Object.keys(fileUpload).map(async (key) => {
+      dataPayload[key] = await transformFileIntoFormDataFile(fileUpload[key]);
+    })
+  );
+  const formData = createFormData(dataPayload);
   return formData;
 };
 
